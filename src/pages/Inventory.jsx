@@ -1,0 +1,321 @@
+import React, { useState } from 'react';
+import { Truck, Warehouse, Trash2, Search, Plus, AlertTriangle, Pencil, Check, X } from 'lucide-react';
+import { calculateTotalAssets, formatCurrency, formatDateTime } from '../utils/calculations';
+
+const Inventory = ({ items, setItems, searchTerm, onLogTransaction }) => {
+  const [inputValues, setInputValues] = useState({});
+  const [newItemName, setNewItemName] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editingItemName, setEditingItemName] = useState('');
+
+  // Default threshold for low stock (could be moved to Settings later)
+  const LOW_STOCK_THRESHOLD = 10;
+
+  const filteredItems = items.filter(item =>
+    item.name.toLowerCase().includes((localSearchTerm || '').toLowerCase())
+  );
+
+  // Enable compact mode when inventory exceeds 20 items
+  const isCompactMode = items.length > 20;
+
+  const addItem = () => {
+    if (newItemName.trim() === '') return;
+    const newItem = {
+      id: Date.now(),
+      name: newItemName,
+      whQty: 0,
+      lorryQty: 0,
+      buyingPrice: 0,
+      sellingPrice: 0
+    };
+    setItems([...items, newItem]);
+    setNewItemName('');
+  };
+
+  const handleInputChange = (id, field, value) => {
+    setInputValues({
+      ...inputValues,
+      [`${id}-${field}`]: value
+    });
+  };
+
+  const handleAddWarehouse = (id) => {
+    const qty = parseInt(inputValues[`${id}-qty`] || 0);
+    const billValue = parseFloat(inputValues[`${id}-bill`] || 0);
+
+    if (qty <= 0) return;
+
+    const itemName = items.find(i => i.id === id)?.name || 'Unknown Item';
+
+    setItems(items.map(item => {
+      if (item.id === id) {
+        const currentWhQty = item.whQty || 0;
+        const newUnitPrice = billValue > 0 ? (billValue / qty) : (item.buyingPrice || 0);
+
+        // Log transaction
+        if (onLogTransaction) {
+          onLogTransaction({
+            date: new Date().toISOString(),
+            category: 'Inventory',
+            type: 'restock',
+            details: `Restocked ${itemName}: +${qty} units (Bill: Rs. ${billValue.toLocaleString('en-PK', { minimumFractionDigits: 2 })})`,
+            amount: billValue
+          });
+        }
+
+        return {
+          ...item,
+          whQty: currentWhQty + qty,
+          buyingPrice: newUnitPrice
+        };
+      }
+      return item;
+    }));
+
+    handleInputChange(id, 'qty', '');
+    handleInputChange(id, 'bill', '');
+  };
+
+  const handleLoadLorry = (id) => {
+    const amount = parseInt(inputValues[`${id}-load`] || 0);
+    const item = items.find(i => i.id === id);
+
+    if (amount <= 0 || (item.whQty || 0) < amount) {
+      alert("Insufficient Warehouse stock!");
+      return;
+    }
+
+    const itemName = item?.name || 'Unknown Item';
+
+    setItems(items.map(item =>
+      item.id === id ? {
+        ...item,
+        whQty: (item.whQty || 0) - amount,
+        lorryQty: (item.lorryQty || 0) + amount
+      } : item
+    ));
+
+    // Log transaction
+    if (onLogTransaction) {
+      onLogTransaction({
+        date: new Date().toISOString(),
+        category: 'Inventory',
+        type: 'load_lorry',
+        details: `Loaded to Lorry: ${itemName} +${amount} units (Warehouse: ${(item.whQty || 0) - amount} → Lorry: ${(item.lorryQty || 0) + amount})`,
+        amount: amount
+      });
+    }
+
+    handleInputChange(id, 'load', '');
+  };
+
+  const deleteItem = (id) => {
+    if (window.confirm("Delete this item?")) {
+      setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  const handleStartEditItemName = (id, currentName) => {
+    setEditingItemId(id);
+    setEditingItemName(currentName);
+  };
+
+  const handleSaveItemName = (id) => {
+    if (editingItemName.trim()) {
+      setItems(items.map(item =>
+        item.id === id ? { ...item, name: editingItemName.trim() } : item
+      ));
+    }
+    setEditingItemId(null);
+    setEditingItemName('');
+  };
+
+  const handleCancelEditItemName = () => {
+    setEditingItemId(null);
+    setEditingItemName('');
+  };
+
+  return (
+    <div className="inventory-container">
+      <h1 style={{ marginBottom: '30px', fontSize: '28px', fontWeight: '600', textAlign: 'center' }}>Inventory Control</h1>
+      <div className="date-display">{new Date().toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
+
+      <div className="pill-header">
+        <div className="search-section">
+          <Search size={18} />
+          <input
+            type="text"
+            placeholder="Search Inventory..."
+            value={localSearchTerm}
+            onChange={(e) => setLocalSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <input
+          type="text"
+          className="new-item-input"
+          placeholder="New Item Name"
+          value={newItemName}
+          onChange={(e) => setNewItemName(e.target.value)}
+        />
+
+        <button className="add-btn" onClick={addItem}>
+          <Plus size={16} /> Add Item
+        </button>
+      </div>
+
+      <div className="table-container card">
+        <table className={`inventory-table ${isCompactMode ? 'compact' : ''}`}>
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Wh. Qty</th>
+              <th>Lorry Qty</th>
+              <th>Total QTY</th>
+              <th>Total Value (Rs.)</th>
+              <th style={{ textAlign: 'center' }}>Restock (Bill)</th>
+              <th style={{ textAlign: 'center' }}>Load Lorry</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.map(item => {
+              const whQty = item.whQty || 0;
+              const lorryQty = item.lorryQty || 0;
+              const totalQty = whQty + lorryQty;
+              const totalValue = totalQty * (item.buyingPrice || 0);
+              const isLowStock = totalQty < LOW_STOCK_THRESHOLD;
+
+              return (
+                <tr key={item.id}>
+                  <td className="item-name">
+                    {editingItemId === item.id ? (
+                      <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="inventory-input"
+                          value={editingItemName}
+                          onChange={(e) => setEditingItemName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveItemName(item.id);
+                            if (e.key === 'Escape') handleCancelEditItemName();
+                          }}
+                          autoFocus
+                          style={{ minWidth: '120px', padding: '4px 8px', fontSize: '14px' }}
+                        />
+                        <button
+                          className="joined-icon-btn"
+                          onClick={() => handleSaveItemName(item.id)}
+                          title="Save"
+                          style={{ background: '#107c10' }}
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          className="delete-icon-btn"
+                          onClick={handleCancelEditItemName}
+                          title="Cancel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{item.name}</span>
+                        <button
+                          className="delete-icon-btn"
+                          onClick={() => handleStartEditItemName(item.id, item.name)}
+                          title="Rename item"
+                          style={{ opacity: 0.7 }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        {isLowStock && <AlertTriangle size={12} style={{ color: '#c42b1c' }} />}
+                      </div>
+                    )}
+                  </td>
+                  <td>{whQty}</td>
+                  <td>{lorryQty}</td>
+
+                  {/* Total QTY Column with Conditional Styling */}
+                  <td className="total-qty-cell" style={{ color: isLowStock ? '#c42b1c' : 'inherit' }}>
+                    {totalQty}
+                  </td>
+
+                  <td className="item-total-value">
+                    Rs. {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+
+                  <td>
+                    <div className="joined-input-group">
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        className="joined-input"
+                        value={inputValues[`${item.id}-qty`] || ''}
+                        onChange={(e) => handleInputChange(item.id, 'qty', e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Total Rs."
+                        className="joined-input"
+                        value={inputValues[`${item.id}-bill`] || ''}
+                        onChange={(e) => handleInputChange(item.id, 'bill', e.target.value)}
+                      />
+                      <button className="joined-icon-btn" onClick={() => handleAddWarehouse(item.id)}>
+                        <Warehouse size={14} />
+                      </button>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div className="joined-input-group">
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        className="joined-input"
+                        value={inputValues[`${item.id}-load`] || ''}
+                        onChange={(e) => handleInputChange(item.id, 'load', e.target.value)}
+                      />
+                      <button className="joined-icon-btn" onClick={() => handleLoadLorry(item.id)}>
+                        <Truck size={14} />
+                      </button>
+                    </div>
+                  </td>
+
+                  <td>
+                    <button className="delete-icon-btn" onClick={() => deleteItem(item.id)}>
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {/* Grand Total Row */}
+            <tr style={{ background: 'var(--glass-bg)', fontWeight: 'bold', borderTop: '2px solid var(--border-color)' }}>
+              <td className="item-name" style={{ fontWeight: 700 }}>Grand Total</td>
+              <td style={{ textAlign: 'right' }}>
+                {filteredItems.reduce((sum, item) => sum + (item.whQty || 0), 0)}
+              </td>
+              <td style={{ textAlign: 'right' }}>
+                {filteredItems.reduce((sum, item) => sum + (item.lorryQty || 0), 0)}
+              </td>
+              <td style={{ textAlign: 'right', color: 'var(--accent-color)' }}>
+                {filteredItems.reduce((sum, item) => sum + (item.whQty || 0) + (item.lorryQty || 0), 0)}
+              </td>
+              <td className="item-total-value" style={{ color: 'var(--accent-color)', fontSize: '15px' }}>
+                Rs. {formatCurrency(calculateTotalAssets(filteredItems))}
+              </td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default Inventory;
