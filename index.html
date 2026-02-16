@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agency Management System</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #1a1a1a;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+      #root {
+        width: 100%;
+        height: 100vh;
+      }
+      .app-error {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100vh;
+        background-color: #1a1a1a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      console.log('Index.html loaded');
+      window.addEventListener('error', (e) => {
+        console.error('Global error in index.html:', e.error);
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        console.error('Unhandled rejection in index.html:', e.reason);
+      });
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
