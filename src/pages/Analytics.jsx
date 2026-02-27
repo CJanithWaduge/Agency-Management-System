@@ -80,8 +80,14 @@ const Analytics = ({
   routes = [],
   isDarkMode = true
 }) => {
-  const [selectedRoute, setSelectedRoute] = useState('All');
-  const [timeRange, setTimeRange] = useState('This Month');
+  const [selectedRoute, setSelectedRoute] = useState(() => {
+    const saved = localStorage.getItem('samindu_analytics_selected_route');
+    return saved || 'All';
+  });
+  const [timeRange, setTimeRange] = useState(() => {
+    const saved = localStorage.getItem('samindu_analytics_time_range');
+    return saved || 'This Month';
+  });
   const COLORS = useMemo(() => getThemeColors(isDarkMode), [isDarkMode]);
 
   // Logic: Filtering Sales specifically for the selected window
@@ -186,32 +192,39 @@ const Analytics = ({
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {/* Enhanced Filters */}
           <div style={{ display: 'flex', background: COLORS.cardBg, border: `1px solid ${COLORS.grid}`, borderRadius: '10px', padding: '4px' }}>
-            {['Today', 'This Week', 'This Month'].map(range => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: '7px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: '0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  background: timeRange === range ? COLORS.sales : 'transparent',
-                  color: timeRange === range ? '#fff' : COLORS.textLight
-                }}
-              >
-                {range}
-              </button>
-            ))}
+                {['Today', 'This Week', 'This Month'].map(range => (
+                <button
+                  key={range}
+                  onClick={() => {
+                    setTimeRange(range);
+                    localStorage.setItem('samindu_analytics_time_range', range);
+                  }}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '7px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: '0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: timeRange === range ? COLORS.sales : 'transparent',
+                    color: timeRange === range ? '#fff' : COLORS.textLight
+                  }}
+                >
+                  {range}
+                </button>
+              ))}
           </div>
 
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: COLORS.cardBg, border: `1px solid ${COLORS.grid}`, padding: '8px 16px', borderRadius: '10px' }}>
             <Filter size={16} color={COLORS.sales} style={{ marginRight: '8px' }} />
             <select
               value={selectedRoute}
-              onChange={(e) => setSelectedRoute(e.target.value)}
+              onChange={(e) => {
+                const newRoute = e.target.value;
+                setSelectedRoute(newRoute);
+                localStorage.setItem('samindu_analytics_selected_route', newRoute);
+              }}
               style={{ background: 'transparent', border: 'none', color: COLORS.textMain, fontSize: '13px', fontWeight: '600', outline: 'none', cursor: 'pointer', appearance: 'none', paddingRight: '20px' }}
             >
               <option value="All" style={{ background: COLORS.cardBg, color: COLORS.textMain }}>All Regions</option>

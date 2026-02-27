@@ -717,6 +717,11 @@ label {
   opacity: 0.9;
 }
 
+/* Allow specific cards to permit overflowing children (e.g. suggestion dropdowns) */
+.card.allow-overflow {
+  overflow: visible;
+}
+
 .card-restore-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   opacity: 1;

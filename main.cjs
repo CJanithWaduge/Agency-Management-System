@@ -214,6 +214,20 @@ function createWindow() {
     });
   }
 
+  // Set Content Security Policy (CSP)
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          isDev 
+            ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; img-src 'self' data:;" 
+            : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+        ]
+      }
+    });
+  });
+
   // This tells Electron to show our React app
   if (isDev) {
     const startUrl = process.env.VITE_PORT

@@ -11,10 +11,11 @@ import History from './pages/History';
 import SettingsPage from './pages/Settings';
 import Expenses from './pages/Expenses';
 import Analytics from './pages/Analytics';
+import Reports from './pages/Reports';
 import {
   LayoutDashboard, Package, ShoppingCart, Users,
   History as HistoryIcon, FileText, Sun, Moon,
-  Settings as SettingsIcon, Menu, CreditCard, BarChart3, Cog, LogOut, UserPlus
+  Settings as SettingsIcon, Menu, CreditCard, BarChart3, Cog, LogOut, UserPlus, FileBarChart
 } from 'lucide-react';
 
 function App() {
@@ -267,7 +268,7 @@ function App() {
 
     const totalNetValue = basketItems.reduce((sum, item) => sum + item.subtotal, 0);
 
-    const newTransaction = {
+     const newTransaction = {
       date: transactionDate,
       shopName: shopName || (isCredit ? 'Unknown Shop' : 'Cash Sale'),
       routeName,
@@ -275,11 +276,7 @@ function App() {
       itemsSold: basketItems,
       totalBill: totalNetValue,
       paidAmount: isCredit ? 0 : totalNetValue,
-      paymentHistory: isCredit ? [] : [{
-        date: transactionDate,
-        amount: totalNetValue,
-        note: 'Paid in Full (Cash)'
-      }]
+      paymentHistory: []
     };
 
     try {
@@ -660,6 +657,7 @@ function App() {
             { id: 'Sales', label: 'Daily Sales', icon: <ShoppingCart size={20} /> },
             { id: 'Creditors', label: 'Creditors', icon: <Users size={20} /> },
             { id: 'Expenses', label: 'Expenses', icon: <CreditCard size={20} /> },
+            { id: 'Reports', label: 'Reports', icon: <FileBarChart size={20} /> },
             { id: 'Analytics', label: 'Analytics', icon: <BarChart3 size={20} /> },
             { id: 'Statement', label: 'Statement', icon: <FileText size={20} /> },
             { id: 'History', label: 'History', icon: <HistoryIcon size={20} /> }
@@ -781,6 +779,14 @@ function App() {
               items={items}
               expenses={expenses}
               isDarkMode={isDarkMode}
+            />
+          )}
+          {activeTab === 'Reports' && (
+            <Reports
+              items={items}
+              salesHistory={salesHistory}
+              companyName={companyName}
+              expenses={expenses}
             />
           )}
           {activeTab === 'Settings' && (

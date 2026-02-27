@@ -1,17 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Trash2, CheckCircle, Wallet, Clock, Percent, RotateCcw, Pencil } from 'lucide-react';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 
 const Sales = ({ items, onConfirmSale, salesHistory, routes = [], setRoutes, onResetDailySales }) => {
   const [shopName, setShopName] = useState('');
-  const [selectedRoute, setSelectedRoute] = useState(routes[0] || '');
+  const [selectedRoute, setSelectedRoute] = useState(() => {
+    const saved = localStorage.getItem('samindu_sales_selected_route');
+    return saved || (routes[0] || '');
+  });
   const [newRouteName, setNewRouteName] = useState('');
   const [isCredit, setIsCredit] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef(null);
+  const [suggestStyle, setSuggestStyle] = useState({});
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingItemName, setEditingItemName] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const saved = localStorage.getItem('samindu_sales_selected_date');
+    return saved || new Date().toISOString().split('T')[0];
+  });
 
   // Professional Bill States
   const [qty, setQty] = useState('');
@@ -27,6 +35,50 @@ const Sales = ({ items, onConfirmSale, salesHistory, routes = [], setRoutes, onR
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routes]);
+
+  const filteredItems = useMemo(() => items.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  ), [items, searchTerm]);
+
+  // Position suggestion box correctly below the search input
+  useEffect(() => {
+    const updatePos = () => {
+      const el = searchInputRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const newStyle = {
+        position: 'absolute',
+        top: `${rect.height}px`,
+        left: '0',
+        width: `${rect.width}px`,
+        zIndex: 30000,
+        backgroundColor: 'var(--sidebar-bg)',
+        color: 'var(--text-main)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '0 0 12px 12px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+        maxHeight: '250px',
+        overflowY: 'auto'
+      };
+
+      setSuggestStyle(prev => {
+        // only update if position/size values changed to avoid render loop
+        if (prev.top !== newStyle.top || prev.left !== newStyle.left || prev.width !== newStyle.width) {
+          return newStyle;
+        }
+        return prev;
+      });
+    };
+
+    if (searchTerm && filteredItems.length > 0) updatePos();
+
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [searchTerm, filteredItems.length]);
 
   // --- BILL CALCULATIONS ---
   const grossValue = (parseFloat(qty) || 0) * (parseFloat(unitPrice) || 0);
@@ -50,9 +102,6 @@ const Sales = ({ items, onConfirmSale, salesHistory, routes = [], setRoutes, onR
   const profitOnHand = totalCashValue * 0.08;
   const profitOnCredit = totalCreditValue * 0.08;
 
-  const filteredItems = items.filter(item =>
-    item.lorryQty > 0 && item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const addToBasket = () => {
     if (!qty || qty <= 0 || !unitPrice || !searchTerm) return;
@@ -172,7 +221,11 @@ const Sales = ({ items, onConfirmSale, salesHistory, routes = [], setRoutes, onR
               type="date"
               className="inventory-input"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                const newDate = e.target.value;
+                setSelectedDate(newDate);
+                localStorage.setItem('samindu_sales_selected_date', newDate);
+              }}
             />
           </div>
           <div className="input-group">
@@ -188,7 +241,11 @@ const Sales = ({ items, onConfirmSale, salesHistory, routes = [], setRoutes, onR
           </div>
           <div className="input-group">
             <label className="bill-label">Select Route</label>
-            <select className="inventory-input" value={selectedRoute} onChange={(e) => setSelectedRoute(e.target.value)}>
+            <select className="inventory-input" value={selectedRoute} onChange={(e) => {
+                const newRoute = e.target.value;
+                setSelectedRoute(newRoute);
+                localStorage.setItem('samindu_sales_selected_route', newRoute);
+              }}>
               {routes.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
@@ -210,17 +267,18 @@ const Sales = ({ items, onConfirmSale, salesHistory, routes = [], setRoutes, onR
       </div>
 
       {/* 3. PROFESSIONAL BILL ENTRY FORM */}
-      <div className="card" style={{ marginBottom: '20px', background: 'var(--sidebar-bg)', position: 'relative', zIndex: 10 }}>
+      <div className="card allow-overflow" style={{ marginBottom: '20px', background: 'var(--sidebar-bg)', position: 'relative', zIndex: 10 }}>
         <div className="bill-line-grid">
           <div className="input-group" style={{ position: 'relative' }}>
             <label className="bill-label">Item / Search</label>
             <input
+              ref={searchInputRef}
               type="text" className="inventory-input"
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search items..."
             />
             {searchTerm && filteredItems.length > 0 && (
-              <div className="suggestion-box">
+              <div className="suggestion-box" style={suggestStyle}>
                 {filteredItems.map(item => (
                   <div key={item.id} className="suggestion-item" onClick={() => { setSearchTerm(item.name); setUnitPrice((item.price || 0).toString()); }}>
                     <span className="item-name">{item.name}</span>

@@ -6,13 +6,31 @@ import { ConfirmationDialog } from '../components/ConfirmationDialog';
 const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expenses = [] }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
-  const [timeRangeMode, setTimeRangeMode] = useState('exact-date'); // 'year-only', 'year-range', 'exact-date'
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [startYear, setStartYear] = useState(new Date().getFullYear());
-  const [endYear, setEndYear] = useState(new Date().getFullYear());
+  const [timeRangeMode, setTimeRangeMode] = useState(() => {
+    const saved = localStorage.getItem('samindu_dashboard_time_range_mode');
+    return saved || 'exact-date'; // 'year-only', 'year-range', 'exact-date'
+  });
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const saved = localStorage.getItem('samindu_dashboard_selected_year');
+    return saved ? parseInt(saved) : new Date().getFullYear();
+  });
+  const [startYear, setStartYear] = useState(() => {
+    const saved = localStorage.getItem('samindu_dashboard_start_year');
+    return saved ? parseInt(saved) : new Date().getFullYear();
+  });
+  const [endYear, setEndYear] = useState(() => {
+    const saved = localStorage.getItem('samindu_dashboard_end_year');
+    return saved ? parseInt(saved) : new Date().getFullYear();
+  });
   // const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Unused
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(() => {
+    const saved = localStorage.getItem('samindu_dashboard_start_date');
+    return saved || new Date().toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const saved = localStorage.getItem('samindu_dashboard_end_date');
+    return saved || new Date().toISOString().split('T')[0];
+  });
 
   const getMonthYearString = () => {
     const now = new Date();
@@ -234,7 +252,11 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
               name="timeRange"
               value="exact-date"
               checked={timeRangeMode === 'exact-date'}
-              onChange={(e) => setTimeRangeMode(e.target.value)}
+              onChange={(e) => {
+                const newMode = e.target.value;
+                setTimeRangeMode(newMode);
+                localStorage.setItem('samindu_dashboard_time_range_mode', newMode);
+              }}
             />
             Exact Date Period
           </label>
@@ -244,7 +266,11 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
               name="timeRange"
               value="year-only"
               checked={timeRangeMode === 'year-only'}
-              onChange={(e) => setTimeRangeMode(e.target.value)}
+              onChange={(e) => {
+                const newMode = e.target.value;
+                setTimeRangeMode(newMode);
+                localStorage.setItem('samindu_dashboard_time_range_mode', newMode);
+              }}
             />
             Year Only
           </label>
@@ -254,7 +280,11 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
               name="timeRange"
               value="year-range"
               checked={timeRangeMode === 'year-range'}
-              onChange={(e) => setTimeRangeMode(e.target.value)}
+              onChange={(e) => {
+                const newMode = e.target.value;
+                setTimeRangeMode(newMode);
+                localStorage.setItem('samindu_dashboard_time_range_mode', newMode);
+              }}
             />
             Year Range
           </label>
@@ -270,7 +300,11 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
                   type="date"
                   className="inventory-input"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setStartDate(newDate);
+                    localStorage.setItem('samindu_dashboard_start_date', newDate);
+                  }}
                   style={{ fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                 />
               </div>
@@ -280,7 +314,11 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
                   type="date"
                   className="inventory-input"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setEndDate(newDate);
+                    localStorage.setItem('samindu_dashboard_end_date', newDate);
+                  }}
                   style={{ fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                 />
               </div>
@@ -290,12 +328,16 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
           {timeRangeMode === 'year-only' && (
             <div>
               <label className="bill-label" style={{ fontSize: '12px', marginBottom: '6px', display: 'block' }}>Select Year</label>
-              <select
-                className="inventory-input"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                style={{ fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
-              >
+                <select
+                  className="inventory-input"
+                  value={selectedYear}
+                  onChange={(e) => {
+                    const newYear = parseInt(e.target.value);
+                    setSelectedYear(newYear);
+                    localStorage.setItem('samindu_dashboard_selected_year', newYear.toString());
+                  }}
+                  style={{ fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                >
                 {[...Array(20)].map((_, i) => {
                   const year = new Date().getFullYear() - 10 + i;
                   return <option key={year} value={year}>{year}</option>;
@@ -311,7 +353,11 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
                 <select
                   className="inventory-input"
                   value={startYear}
-                  onChange={(e) => setStartYear(parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const newYear = parseInt(e.target.value);
+                    setStartYear(newYear);
+                    localStorage.setItem('samindu_dashboard_start_year', newYear.toString());
+                  }}
                   style={{ fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                 >
                   {[...Array(20)].map((_, i) => {
@@ -325,7 +371,11 @@ const Dashboard = ({ items = [], salesHistory = [], statementEntries = [], expen
                 <select
                   className="inventory-input"
                   value={endYear}
-                  onChange={(e) => setEndYear(parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const newYear = parseInt(e.target.value);
+                    setEndYear(newYear);
+                    localStorage.setItem('samindu_dashboard_end_year', newYear.toString());
+                  }}
                   style={{ fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                 >
                   {[...Array(20)].map((_, i) => {
